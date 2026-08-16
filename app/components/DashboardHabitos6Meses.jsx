@@ -31,6 +31,13 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { Poppins } from "next/font/google";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
+});
 
 const STORAGE_KEY = "dashboard-habitos-6-meses:v1";
 const TOTAL_DAYS = 180;
@@ -38,20 +45,20 @@ const MONTH_LEN = 30; // 6 meses x 30 días = 180
 const MONTH_COUNT = TOTAL_DAYS / MONTH_LEN;
 
 const AREAS = {
-  mental: { label: "Mental", color: "#8B7FE8" },
-  espiritual: { label: "Espiritual", color: "#4FD1C5" },
-  fisica: { label: "Física", color: "#EF6461" },
-  estetica: { label: "Estética", color: "#E893C4" },
-  economica: { label: "Económica", color: "#F2B84B" },
+  mental: { label: "Mental", color: "#7C5CFF" },
+  espiritual: { label: "Espiritual", color: "#00E5D6" },
+  fisica: { label: "Física", color: "#FF4D4D" },
+  estetica: { label: "Estética", color: "#FF3DA6" },
+  economica: { label: "Económica", color: "#FFA31A" },
 };
 
 const AREA_ORDER = ["mental", "espiritual", "fisica", "estetica", "economica"];
 
 const GRADIENT_STOPS = [
-  { offset: "0%", color: "#8B7FE8" }, // violeta — mental
-  { offset: "33%", color: "#4FD1C5" }, // cian — espiritual
-  { offset: "66%", color: "#F2B84B" }, // ámbar — económica
-  { offset: "100%", color: "#EF6461" }, // coral — física
+  { offset: "0%", color: "#7C5CFF" }, // violeta — mental
+  { offset: "33%", color: "#00E5D6" }, // cian — espiritual
+  { offset: "66%", color: "#FFA31A" }, // ámbar — económica
+  { offset: "100%", color: "#FF4D4D" }, // coral — física
 ];
 
 const DEFAULT_HABITS = [
@@ -394,7 +401,7 @@ export default function DashboardHabitos6Meses() {
 
   // ---- Render ----------------------------------------------------------
   return (
-    <div className="min-h-screen w-full bg-[#08080b] text-white/90 font-mono">
+    <div className={`min-h-screen w-full bg-[#08080b] text-white/90 font-semibold ${poppins.className}`}>
       <div className="mx-auto max-w-6xl px-4 py-8">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6">
@@ -404,7 +411,7 @@ export default function DashboardHabitos6Meses() {
             </p>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
               Día{" "}
-              <span className="bg-gradient-to-r from-[#8B7FE8] via-[#4FD1C5] via-[#F2B84B] to-[#EF6461] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#7C5CFF] via-[#00E5D6] via-[#FFA31A] to-[#FF4D4D] bg-clip-text text-transparent">
                 {currentDay}
               </span>
               <span className="text-white/30">/{TOTAL_DAYS}</span>
@@ -417,7 +424,7 @@ export default function DashboardHabitos6Meses() {
               )}
             </p>
             {progressError && (
-              <p className="mt-1 text-xs text-[#EF6461]">{progressError}</p>
+              <p className="mt-1 text-xs text-[#FF4D4D]">{progressError}</p>
             )}
           </div>
 
@@ -456,7 +463,7 @@ export default function DashboardHabitos6Meses() {
                 }`}
               >
                 Mes {m}
-                {isCurrent && <span className="ml-1 text-[9px] text-[#4FD1C5]">●</span>}
+                {isCurrent && <span className="ml-1 text-[9px] text-[#00E5D6]">●</span>}
               </button>
             );
           })}
@@ -575,7 +582,7 @@ export default function DashboardHabitos6Meses() {
                     </div>
                     <button
                       onClick={() => removeHabit(h.id)}
-                      className="text-xs text-white/40 hover:text-[#EF6461] transition-colors"
+                      className="text-xs text-white/40 hover:text-[#FF4D4D] transition-colors"
                     >
                       Eliminar
                     </button>
@@ -619,20 +626,20 @@ export default function DashboardHabitos6Meses() {
               {!confirmReset ? (
                 <button
                   onClick={() => setConfirmReset(true)}
-                  className="w-full rounded-md border border-[#EF6461]/40 bg-[#EF6461]/10 px-3 py-2 text-sm text-[#EF6461] hover:bg-[#EF6461]/20 transition-colors"
+                  className="w-full rounded-md border border-[#FF4D4D]/40 bg-[#FF4D4D]/10 px-3 py-2 text-sm text-[#FF4D4D] hover:bg-[#FF4D4D]/20 transition-colors"
                 >
                   Reiniciar progreso
                 </button>
               ) : (
                 <div className="space-y-2">
-                  <p className="text-xs text-[#EF6461]">
+                  <p className="text-xs text-[#FF4D4D]">
                     Esto borra todas las marcas de hábitos cumplidos. No se puede
                     deshacer. ¿Confirmas?
                   </p>
                   <div className="flex gap-2">
                     <button
                       onClick={resetProgress}
-                      className="flex-1 rounded-md bg-[#EF6461] px-3 py-2 text-sm text-black font-medium hover:opacity-90 transition-opacity"
+                      className="flex-1 rounded-md bg-[#FF4D4D] px-3 py-2 text-sm text-black font-medium hover:opacity-90 transition-opacity"
                     >
                       Sí, reiniciar
                     </button>
@@ -660,7 +667,7 @@ export default function DashboardHabitos6Meses() {
 function FeedbackCard({ label, stats }) {
   const { pct, delta } = stats;
   const hasDelta = delta !== null && delta !== undefined;
-  const deltaColor = !hasDelta ? "text-white/30" : delta >= 0 ? "text-[#8FCB6E]" : "text-[#EF6461]";
+  const deltaColor = !hasDelta ? "text-white/30" : delta >= 0 ? "text-[#8FCB6E]" : "text-[#FF4D4D]";
   const deltaArrow = !hasDelta ? "" : delta >= 0 ? "▲" : "▼";
 
   return (
@@ -762,7 +769,7 @@ function ProgressChart({ dailyStats, monthLen }) {
             cx={points[points.length - 1][0]}
             cy={points[points.length - 1][1]}
             r={4}
-            fill="#EF6461"
+            fill="#FF4D4D"
             stroke="#08080b"
             strokeWidth={1.5}
           />
@@ -806,7 +813,7 @@ function HabitGrid({ habits, completions, currentDay, startDate, selectedMonth, 
   return (
     <div className="overflow-x-auto rounded-xl border border-white/10">
       <div
-        className="inline-grid min-w-full"
+        className="inline-grid min-w-full gap-[3px]"
         style={{ gridTemplateColumns: `200px repeat(${MONTH_LEN}, 26px)` }}
       >
         {/* Banda de semanas */}
@@ -857,7 +864,7 @@ function HabitGrid({ habits, completions, currentDay, startDate, selectedMonth, 
                   <span className="truncate text-xs text-white/80">{habit.name}</span>
                 </div>
                 {streak > 0 && (
-                  <span className="flex shrink-0 items-center gap-0.5 text-[10px] text-[#F2B84B]">
+                  <span className="flex shrink-0 items-center gap-0.5 text-[10px] text-[#FFA31A]">
                     🔥{streak}
                   </span>
                 )}
@@ -874,10 +881,12 @@ function HabitGrid({ habits, completions, currentDay, startDate, selectedMonth, 
                     disabled={isFuture}
                     onClick={() => onToggle(habit.id, day)}
                     title={formatShort(dateFromDay(startDate, day))}
-                    className={`aspect-square border-b border-l border-white/5 transition-colors ${
+                    className={`aspect-square rounded-md m-[2px] transition-colors ${
+                      done ? "" : "bg-white/5"
+                    } ${
                       isFuture ? "cursor-not-allowed opacity-25" : "cursor-pointer hover:opacity-80"
                     } ${isToday ? "ring-1 ring-inset ring-white/40" : ""}`}
-                    style={{ backgroundColor: done ? color : "transparent" }}
+                    style={{ backgroundColor: done ? color : undefined }}
                   >
                     {done && (
                       <span className="block text-[10px] leading-none text-black/70">✓</span>
