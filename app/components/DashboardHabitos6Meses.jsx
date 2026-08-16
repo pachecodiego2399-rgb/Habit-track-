@@ -14,11 +14,19 @@
  *
  * Requisitos:
  *  - Tailwind CSS configurado (stack Next.js / Vercel).
- *  - Componente de cliente ("use client"), usa hooks y localStorage.
+ *  - Componente de cliente ("use client"), usa hooks.
  *  - Sin dependencias externas: gráfico en SVG puro, ícono de racha
  *    es el emoji 🔥.
  *
- * Persistencia: localStorage, clave STORAGE_KEY, se guarda automático.
+ * Persistencia:
+ *  - El PROGRESO (qué días quedaron marcados) vive en Airtable, vía las
+ *    rutas /api/progress (ver app/api/progress/route.js) — así se ve
+ *    igual desde cualquier navegador o dispositivo.
+ *  - Los HÁBITOS y la fecha de inicio siguen en localStorage (clave
+ *    STORAGE_KEY) por ahora: son locales a este navegador. Si agregas
+ *    o borras un hábito desde el botón "+ Hábito", ese cambio no se
+ *    sincroniza a Airtable todavía — solo se guardan las marcas de los
+ *    6 hábitos originales que sí existen en la base.
  * ------------------------------------------------------------------
  */
 
@@ -54,17 +62,6 @@ const DEFAULT_HABITS = [
   { id: "h6", name: "Negocio", area: "economica" },
   { id: "h4", name: "Round 2", area: "fisica" },
 ];
-
-// Progreso real ya registrado por Diego desde el inicio del reto (7/8/2026).
-// day 1 = 7 de agosto, day 2 = 8 de agosto, etc.
-const DEFAULT_COMPLETIONS = {
-  h1: { 7: true, 8: true },
-  h2: { 2: true, 6: true, 7: true, 9: true },
-  h3: { 3: true, 6: true, 7: true, 8: true },
-  h4: { 1: true, 3: true, 4: true, 5: true, 7: true, 9: true },
-  h5: {},
-  h6: { 1: true, 3: true, 4: true, 7: true, 8: true, 9: true },
-};
 
 const DEFAULT_START_DATE = "2026-08-07";
 
@@ -151,8 +148,12 @@ function feedbackMessage(pct) {
 
 export default function DashboardHabitos6Meses() {
   const [habits, setHabits] = useState(DEFAULT_HABITS);
-  const [completions, setCompletions] = useState(DEFAULT_COMPLETIONS); // { [habitId]: { [day]: true } }
+  // { [habitId]: { [day]: airtableRecordId } } — el valor es el ID del registro en
+  // Airtable para poder borrarlo al desmarcar. "pending" mientras se está guardando.
+  const [completions, setCompletions] = useState({});
   const [startDate, setStartDate] = useState(DEFAULT_START_DATE);
+  const [progressLoaded, setProgressLoaded] = useState(false);
+  const [progressError, setProgressError] = useState(null);
   const [activeArea, setActiveArea] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState(1);
   const [monthTouched, setMonthTouched] = useState(false);
@@ -163,7 +164,7 @@ export default function DashboardHabitos6Meses() {
   const [newHabitName, setNewHabitName] = useState("");
   const [newHabitArea, setNewHabitArea] = useState("mental");
 
-  // ---- Cargar progreso guardado --------------------------------------
+  // ---- Cargar hábitos / fecha de inicio (local, por navegador) ----------
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -172,28 +173,56 @@ export default function DashboardHabitos6Meses() {
         if (Array.isArray(parsed.habits) && parsed.habits.length > 0) {
           setHabits(parsed.habits);
         }
-        if (parsed.completions) setCompletions(parsed.completions);
         if (parsed.startDate) setStartDate(parsed.startDate);
       }
     } catch (err) {
-      console.error("No se pudo cargar el progreso guardado:", err);
+      console.error("No se pudo cargar la configuración guardada:", err);
     } finally {
       setHydrated(true);
     }
   }, []);
 
-  // ---- Guardar progreso automáticamente --------------------------------
+  // ---- Guardar hábitos / fecha de inicio automáticamente -----------------
   useEffect(() => {
     if (!hydrated) return;
     try {
       window.localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify({ habits, completions, startDate })
+        JSON.stringify({ habits, startDate })
       );
     } catch (err) {
-      console.error("No se pudo guardar el progreso:", err);
+      console.error("No se pudo guardar la configuración:", err);
     }
-  }, [habits, completions, startDate, hydrated]);
+  }, [habits, startDate, hydrated]);
+
+  // ---- Cargar el progreso (marcas) desde Airtable ------------------------
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/progress")
+      .then((res) => {
+        if (!res.ok) throw new Error(`Airtable respondió ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const next = {};
+        for (const entry of data.entries || []) {
+          if (!next[entry.habitId]) next[entry.habitId] = {};
+          next[entry.habitId][entry.day] = entry.recordId;
+        }
+        setCompletions(next);
+      })
+      .catch((err) => {
+        console.error("No se pudo cargar el progreso desde Airtable:", err);
+        if (!cancelled) setProgressError("No se pudo cargar tu progreso desde Airtable.");
+      })
+      .finally(() => {
+        if (!cancelled) setProgressLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const currentDay = useMemo(() => computeCurrentDay(startDate), [startDate]);
   const currentMonth = useMemo(
@@ -261,19 +290,67 @@ export default function DashboardHabitos6Meses() {
 
   // ---- Acciones ------------------------------------------------------
   const toggleDay = useCallback(
-    (habitId, day) => {
+    async (habitId, day) => {
       if (day > currentDay) return;
-      setCompletions((prev) => {
-        const habitMap = { ...(prev[habitId] || {}) };
-        if (habitMap[day]) {
+      const existingRecordId = completions[habitId]?.[day];
+      const isRealRecord = existingRecordId && existingRecordId !== "pending";
+
+      if (isRealRecord) {
+        // Desmarcar: quitar de inmediato en la UI, luego borrar en Airtable.
+        setCompletions((prev) => {
+          const habitMap = { ...(prev[habitId] || {}) };
           delete habitMap[day];
-        } else {
-          habitMap[day] = true;
+          return { ...prev, [habitId]: habitMap };
+        });
+        try {
+          const res = await fetch("/api/progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ habitId, day, completed: false, recordId: existingRecordId }),
+          });
+          if (!res.ok) throw new Error(`Airtable respondió ${res.status}`);
+        } catch (err) {
+          console.error("No se pudo desmarcar en Airtable:", err);
+          setProgressError("No se pudo guardar ese cambio en Airtable. Intenta de nuevo.");
+          // revertir
+          setCompletions((prev) => ({
+            ...prev,
+            [habitId]: { ...(prev[habitId] || {}), [day]: existingRecordId },
+          }));
         }
-        return { ...prev, [habitId]: habitMap };
-      });
+        return;
+      }
+
+      if (existingRecordId === "pending") return; // ya se está guardando
+
+      // Marcar: mostrar de inmediato, luego confirmar con Airtable.
+      setCompletions((prev) => ({
+        ...prev,
+        [habitId]: { ...(prev[habitId] || {}), [day]: "pending" },
+      }));
+      try {
+        const res = await fetch("/api/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ habitId, day, completed: true, startDate }),
+        });
+        if (!res.ok) throw new Error(`Airtable respondió ${res.status}`);
+        const data = await res.json();
+        setCompletions((prev) => ({
+          ...prev,
+          [habitId]: { ...(prev[habitId] || {}), [day]: data.recordId },
+        }));
+      } catch (err) {
+        console.error("No se pudo marcar en Airtable:", err);
+        setProgressError("No se pudo guardar ese cambio en Airtable. Intenta de nuevo.");
+        setCompletions((prev) => {
+          const habitMap = { ...(prev[habitId] || {}) };
+          delete habitMap[day];
+          return { ...prev, [habitId]: habitMap };
+        });
+      }
     },
-    [currentDay]
+    [currentDay, completions, startDate]
   );
 
   const addHabit = useCallback(() => {
@@ -292,11 +369,20 @@ export default function DashboardHabitos6Meses() {
     });
   }, []);
 
-  const resetProgress = useCallback(() => {
-    setCompletions({});
+  const resetProgress = useCallback(async () => {
     setConfirmReset(false);
     setShowSettingsModal(false);
-  }, []);
+    const previous = completions;
+    setCompletions({});
+    try {
+      const res = await fetch("/api/progress", { method: "DELETE" });
+      if (!res.ok) throw new Error(`Airtable respondió ${res.status}`);
+    } catch (err) {
+      console.error("No se pudo reiniciar el progreso en Airtable:", err);
+      setProgressError("No se pudo reiniciar el progreso en Airtable.");
+      setCompletions(previous);
+    }
+  }, [completions]);
 
   const monthRangeLabel = useMemo(() => {
     const start = (selectedMonth - 1) * MONTH_LEN + 1;
@@ -326,7 +412,13 @@ export default function DashboardHabitos6Meses() {
             <p className="mt-1 text-sm text-white/50">
               Cumplimiento total:{" "}
               <span className="font-semibold text-white/80">{overallPct ?? 0}%</span>
+              {!progressLoaded && (
+                <span className="ml-2 text-white/30">cargando desde Airtable…</span>
+              )}
             </p>
+            {progressError && (
+              <p className="mt-1 text-xs text-[#EF6461]">{progressError}</p>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
