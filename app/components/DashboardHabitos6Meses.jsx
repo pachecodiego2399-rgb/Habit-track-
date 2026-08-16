@@ -179,7 +179,21 @@ export default function DashboardHabitos6Meses() {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed.habits) && parsed.habits.length > 0) {
-          setHabits(parsed.habits);
+          let migratedHabits = parsed.habits;
+          const hasOldCombinedHabit = migratedHabits.some((h) => h.id === "h5" && h.name === "Cuello y hielo");
+          const hasSkincare = migratedHabits.some((h) => h.id === "h7");
+          if (hasOldCombinedHabit && !hasSkincare) {
+            migratedHabits = migratedHabits.flatMap((h) => {
+              if (h.id === "h5" && h.name === "Cuello y hielo") {
+                return [
+                  { id: "h5", name: "Train Neck", area: "estetica" },
+                  { id: "h7", name: "Skincare", area: "estetica" },
+                ];
+              }
+              return [h];
+            });
+          }
+          setHabits(migratedHabits);
         }
         if (parsed.startDate) setStartDate(parsed.startDate);
       }
