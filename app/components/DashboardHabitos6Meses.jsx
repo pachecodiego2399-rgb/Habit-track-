@@ -65,7 +65,8 @@ const DEFAULT_HABITS = [
   { id: "h1", name: "Levantarme 5am", area: "mental" },
   { id: "h2", name: "Tiempo con Dios", area: "espiritual" },
   { id: "h3", name: "Round 1", area: "fisica" },
-  { id: "h5", name: "Cuello y hielo", area: "estetica" },
+  { id: "h5", name: "Train Neck", area: "estetica" },
+  { id: "h7", name: "Skincare", area: "estetica" },
   { id: "h6", name: "Negocio", area: "economica" },
   { id: "h4", name: "Round 2", area: "fisica" },
 ];
@@ -702,15 +703,34 @@ function ProgressChart({ dailyStats, monthLen }) {
 
   const points = dailyStats.map((s, i) => [xFor(i), yFor(s.pct)]);
 
+  const smoothSegments = (pts) => {
+    let d = "";
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] || p2;
+      const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
+      const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
+      const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
+      const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
+      d += ` C ${cp1x.toFixed(2)} ${cp1y.toFixed(2)}, ${cp2x.toFixed(2)} ${cp2y.toFixed(2)}, ${p2[0].toFixed(2)} ${p2[1].toFixed(2)}`;
+    }
+    return d;
+  };
+
   const linePath =
-    points.length > 0
-      ? points.map((p, i) => `${i === 0 ? "M" : "L"}${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(" ")
+    points.length > 1
+      ? `M ${points[0][0].toFixed(2)} ${points[0][1].toFixed(2)}` + smoothSegments(points)
+      : points.length === 1
+      ? `M ${points[0][0].toFixed(2)} ${points[0][1].toFixed(2)}`
       : "";
 
   const areaPath =
     points.length > 0
       ? `M${points[0][0].toFixed(2)},${(padTop + chartHeight).toFixed(2)} ` +
-        points.map((p) => `L${p[0].toFixed(2)},${p[1].toFixed(2)}`).join(" ") +
+        `L${points[0][0].toFixed(2)},${points[0][1].toFixed(2)} ` +
+        smoothSegments(points) +
         ` L${points[points.length - 1][0].toFixed(2)},${(padTop + chartHeight).toFixed(2)} Z`
       : "";
 
