@@ -33,10 +33,11 @@ const AREAS = {
   mental: { label: "Mental", color: "#8B7FE8" },
   espiritual: { label: "Espiritual", color: "#4FD1C5" },
   fisica: { label: "Física", color: "#EF6461" },
+  estetica: { label: "Estética", color: "#E893C4" },
   economica: { label: "Económica", color: "#F2B84B" },
 };
 
-const AREA_ORDER = ["mental", "espiritual", "fisica", "economica"];
+const AREA_ORDER = ["mental", "espiritual", "fisica", "estetica", "economica"];
 
 const GRADIENT_STOPS = [
   { offset: "0%", color: "#8B7FE8" }, // violeta — mental
@@ -47,13 +48,25 @@ const GRADIENT_STOPS = [
 
 const DEFAULT_HABITS = [
   { id: "h1", name: "Levantarme 5am", area: "mental" },
-  { id: "h2", name: "Lectura / aprendizaje", area: "mental" },
-  { id: "h3", name: "Tiempo con Dios", area: "espiritual" },
-  { id: "h4", name: "Entrenamiento", area: "fisica" },
-  { id: "h5", name: "Cuidado del cuerpo", area: "fisica" },
-  { id: "h6", name: "Trabajar en el negocio", area: "economica" },
-  { id: "h7", name: "Control de gastos", area: "economica" },
+  { id: "h2", name: "Tiempo con Dios", area: "espiritual" },
+  { id: "h3", name: "Round 1", area: "fisica" },
+  { id: "h5", name: "Cuello y hielo", area: "estetica" },
+  { id: "h6", name: "Negocio", area: "economica" },
+  { id: "h4", name: "Round 2", area: "fisica" },
 ];
+
+// Progreso real ya registrado por Diego desde el inicio del reto (7/8/2026).
+// day 1 = 7 de agosto, day 2 = 8 de agosto, etc.
+const DEFAULT_COMPLETIONS = {
+  h1: { 7: true, 8: true },
+  h2: { 2: true, 6: true, 7: true, 9: true },
+  h3: { 3: true, 6: true, 7: true, 8: true },
+  h4: { 1: true, 3: true, 4: true, 5: true, 7: true, 9: true },
+  h5: {},
+  h6: { 1: true, 3: true, 4: true, 7: true, 8: true, 9: true },
+};
+
+const DEFAULT_START_DATE = "2026-08-07";
 
 // ---------------------------------------------------------------------------
 // Helpers de fecha
@@ -138,8 +151,8 @@ function feedbackMessage(pct) {
 
 export default function DashboardHabitos6Meses() {
   const [habits, setHabits] = useState(DEFAULT_HABITS);
-  const [completions, setCompletions] = useState({}); // { [habitId]: { [day]: true } }
-  const [startDate, setStartDate] = useState(todayISO());
+  const [completions, setCompletions] = useState(DEFAULT_COMPLETIONS); // { [habitId]: { [day]: true } }
+  const [startDate, setStartDate] = useState(DEFAULT_START_DATE);
   const [activeArea, setActiveArea] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState(1);
   const [monthTouched, setMonthTouched] = useState(false);
