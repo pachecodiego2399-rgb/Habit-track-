@@ -69,6 +69,8 @@ const DEFAULT_HABITS = [
   { id: "h7", name: "Skincare", area: "estetica" },
   { id: "h6", name: "Negocio", area: "economica" },
   { id: "h4", name: "Round 2", area: "fisica" },
+  { id: "h8", name: "3L agua", area: "fisica" },
+  { id: "h9", name: "4000 calorias", area: "fisica" },
 ];
 
 const DEFAULT_START_DATE = "2026-08-07";
@@ -192,6 +194,14 @@ export default function DashboardHabitos6Meses() {
               }
               return [h];
             });
+          }
+          const hasAgua = migratedHabits.some((h) => h.id === "h8");
+          const hasCalorias = migratedHabits.some((h) => h.id === "h9");
+          if (!hasAgua) {
+            migratedHabits = [...migratedHabits, { id: "h8", name: "3L agua", area: "fisica" }];
+          }
+          if (!hasCalorias) {
+            migratedHabits = [...migratedHabits, { id: "h9", name: "4000 calorias", area: "fisica" }];
           }
           setHabits(migratedHabits);
         }
