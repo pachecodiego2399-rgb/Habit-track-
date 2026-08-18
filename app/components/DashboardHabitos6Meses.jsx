@@ -50,9 +50,10 @@ const AREAS = {
   fisica: { label: "Física", color: "#FF4D4D" },
   estetica: { label: "Estética", color: "#FF3DA6" },
   economica: { label: "Económica", color: "#FFA31A" },
+  nutricion: { label: "Nutricion", color: "#4ADE80" },
 };
 
-const AREA_ORDER = ["mental", "espiritual", "fisica", "estetica", "economica"];
+const AREA_ORDER = ["mental", "espiritual", "fisica", "estetica", "economica", "nutricion"];
 
 const GRADIENT_STOPS = [
   { offset: "0%", color: "#7C5CFF" }, // violeta — mental
@@ -69,8 +70,8 @@ const DEFAULT_HABITS = [
   { id: "h7", name: "Skincare", area: "estetica" },
   { id: "h6", name: "Negocio", area: "economica" },
   { id: "h4", name: "Round 2", area: "fisica" },
-  { id: "h8", name: "3L agua", area: "fisica" },
-  { id: "h9", name: "4000 calorias", area: "fisica" },
+  { id: "h8", name: "3L agua", area: "nutricion" },
+  { id: "h9", name: "Nutricion", area: "nutricion" },
 ];
 
 const DEFAULT_START_DATE = "2026-08-07";
@@ -195,13 +196,25 @@ export default function DashboardHabitos6Meses() {
               return [h];
             });
           }
-          const hasAgua = migratedHabits.some((h) => h.id === "h8");
-          const hasCalorias = migratedHabits.some((h) => h.id === "h9");
-          if (!hasAgua) {
-            migratedHabits = [...migratedHabits, { id: "h8", name: "3L agua", area: "fisica" }];
+          const habitH8 = migratedHabits.find((h) => h.id === "h8");
+          if (habitH8) {
+            if (habitH8.area !== "nutricion") {
+              migratedHabits = migratedHabits.map((h) =>
+                h.id === "h8" ? { ...h, area: "nutricion" } : h
+              );
+            }
+          } else {
+            migratedHabits = [...migratedHabits, { id: "h8", name: "3L agua", area: "nutricion" }];
           }
-          if (!hasCalorias) {
-            migratedHabits = [...migratedHabits, { id: "h9", name: "4000 calorias", area: "fisica" }];
+          const habitH9 = migratedHabits.find((h) => h.id === "h9");
+          if (habitH9) {
+            if (habitH9.name !== "Nutricion" || habitH9.area !== "nutricion") {
+              migratedHabits = migratedHabits.map((h) =>
+                h.id === "h9" ? { ...h, name: "Nutricion", area: "nutricion" } : h
+              );
+            }
+          } else {
+            migratedHabits = [...migratedHabits, { id: "h9", name: "Nutricion", area: "nutricion" }];
           }
           setHabits(migratedHabits);
         }
