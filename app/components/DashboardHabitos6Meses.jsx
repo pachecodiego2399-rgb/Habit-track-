@@ -32,6 +32,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { Poppins } from "next/font/google";
+import MilestoneBanner from "./MilestoneBanner";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -275,6 +276,18 @@ export default function DashboardHabitos6Meses() {
     [currentDay]
   );
 
+  // Día más alto con progreso registrado en Airtable (para el banner de hitos).
+  const maxRecordedDay = useMemo(() => {
+    let max = 0;
+    for (const habitDays of Object.values(completions)) {
+      for (const dayKey of Object.keys(habitDays)) {
+        const day = Number(dayKey);
+        if (day > max) max = day;
+      }
+    }
+    return max;
+  }, [completions]);
+
   // Si el usuario no tocó manualmente el selector de mes, seguimos el mes actual
   useEffect(() => {
     if (!monthTouched) setSelectedMonth(currentMonth);
@@ -441,6 +454,8 @@ export default function DashboardHabitos6Meses() {
   return (
     <div className={`min-h-screen w-full bg-[#08080b] text-white/90 font-semibold ${poppins.className}`}>
       <div className="mx-auto max-w-6xl px-4 py-8">
+        <MilestoneBanner day={maxRecordedDay} />
+
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6">
           <div>
