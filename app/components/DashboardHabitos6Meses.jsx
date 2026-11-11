@@ -67,7 +67,6 @@ const DEFAULT_HABITS = [
   { id: "h2", name: "Tiempo con Dios", area: "espiritual" },
   { id: "h3", name: "Round 1", area: "fisica" },
   { id: "h5", name: "Train Neck", area: "estetica" },
-  { id: "h7", name: "Skincare", area: "estetica" },
   { id: "h6", name: "Negocio", area: "economica" },
   { id: "h4", name: "Round 2", area: "fisica" },
 ];
@@ -185,19 +184,17 @@ export default function DashboardHabitos6Meses() {
         if (Array.isArray(parsed.habits) && parsed.habits.length > 0) {
           let migratedHabits = parsed.habits;
           const hasOldCombinedHabit = migratedHabits.some((h) => h.id === "h5" && h.name === "Cuello y hielo");
-          const hasSkincare = migratedHabits.some((h) => h.id === "h7");
-          if (hasOldCombinedHabit && !hasSkincare) {
-            migratedHabits = migratedHabits.flatMap((h) => {
-              if (h.id === "h5" && h.name === "Cuello y hielo") {
-                return [
-                  { id: "h5", name: "Train Neck", area: "estetica" },
-                  { id: "h7", name: "Skincare", area: "estetica" },
-                ];
-              }
-              return [h];
-            });
+          if (hasOldCombinedHabit) {
+            migratedHabits = migratedHabits.map((h) =>
+              h.id === "h5" && h.name === "Cuello y hielo"
+                ? { id: "h5", name: "Train Neck", area: "estetica" }
+                : h
+            );
           }
-          migratedHabits = migratedHabits.filter((h) => h.id !== "h8" && h.id !== "h9");
+          // h7 (Skincare) está en pausa; h8/h9 (3L agua / Nutricion) se eliminaron.
+          migratedHabits = migratedHabits.filter(
+            (h) => h.id !== "h7" && h.id !== "h8" && h.id !== "h9"
+          );
           setHabits(migratedHabits);
         }
         // Navegadores con la fecha del reto anterior → pasan al reto nuevo.
