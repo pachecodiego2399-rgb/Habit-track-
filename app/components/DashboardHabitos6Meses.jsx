@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * Dashboard de hábitos — Reto de 6 meses (180 días) / 4 áreas de vida
+ * Dashboard de hábitos — Reto de 90 días (3 bloques de 30) / áreas de vida
  * ------------------------------------------------------------------
  * Construido a partir del prompt de diseño acordado: estética oscura
  * tipo "terminal / casa de apuestas", 4 áreas (Mental, Espiritual,
  * Física, Económica), gráfico de progreso con gradiente, panel de
  * retroalimentación semanal/mensual por reglas, y grilla de hábitos
- * agrupada por semanas dentro de cada uno de los 6 meses.
+ * agrupada por semanas dentro de cada uno de los 3 bloques de 30 días.
  *
  * Es un proyecto separado del habit-tracker-90-dias.jsx (90 días /
  * 7 áreas) — no lo reemplaza ni depende de él.
@@ -41,8 +41,8 @@ const poppins = Poppins({
 });
 
 const STORAGE_KEY = "dashboard-habitos-6-meses:v1";
-const TOTAL_DAYS = 180;
-const MONTH_LEN = 30; // 6 meses x 30 días = 180
+const TOTAL_DAYS = 90;
+const MONTH_LEN = 30; // 3 bloques x 30 días = 90
 const MONTH_COUNT = TOTAL_DAYS / MONTH_LEN;
 
 const AREAS = {
@@ -72,7 +72,10 @@ const DEFAULT_HABITS = [
   { id: "h4", name: "Round 2", area: "fisica" },
 ];
 
-const DEFAULT_START_DATE = "2026-08-07";
+// Reto actual: arranca el 11-nov-2026. El reto anterior (inicio 2026-08-07)
+// sigue guardado en Airtable, pero se filtra por fecha y ya no se muestra.
+const DEFAULT_START_DATE = "2026-11-11";
+const LEGACY_START_DATE = "2026-08-07";
 
 // ---------------------------------------------------------------------------
 // Helpers de fecha
@@ -197,7 +200,10 @@ export default function DashboardHabitos6Meses() {
           migratedHabits = migratedHabits.filter((h) => h.id !== "h8" && h.id !== "h9");
           setHabits(migratedHabits);
         }
-        if (parsed.startDate) setStartDate(parsed.startDate);
+        // Navegadores con la fecha del reto anterior → pasan al reto nuevo.
+        if (parsed.startDate && parsed.startDate !== LEGACY_START_DATE) {
+          setStartDate(parsed.startDate);
+        }
       }
     } catch (err) {
       console.error("No se pudo cargar la configuración guardada:", err);
@@ -221,8 +227,10 @@ export default function DashboardHabitos6Meses() {
 
   // ---- Cargar el progreso (marcas) desde Airtable ------------------------
   useEffect(() => {
+    if (!hydrated) return;
     let cancelled = false;
-    fetch("/api/progress")
+    setProgressError(null);
+    fetch(`/api/progress?startDate=${encodeURIComponent(startDate)}`)
       .then((res) => {
         if (!res.ok) throw new Error(`Airtable respondió ${res.status}`);
         return res.json();
@@ -246,7 +254,7 @@ export default function DashboardHabitos6Meses() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hydrated, startDate]);
 
   const currentDay = useMemo(() => computeCurrentDay(startDate), [startDate]);
   const currentMonth = useMemo(
@@ -411,14 +419,17 @@ export default function DashboardHabitos6Meses() {
     const previous = completions;
     setCompletions({});
     try {
-      const res = await fetch("/api/progress", { method: "DELETE" });
+      const res = await fetch(
+        `/api/progress?startDate=${encodeURIComponent(startDate)}`,
+        { method: "DELETE" }
+      );
       if (!res.ok) throw new Error(`Airtable respondió ${res.status}`);
     } catch (err) {
       console.error("No se pudo reiniciar el progreso en Airtable:", err);
       setProgressError("No se pudo reiniciar el progreso en Airtable.");
       setCompletions(previous);
     }
-  }, [completions]);
+  }, [completions, startDate]);
 
   const monthRangeLabel = useMemo(() => {
     const start = (selectedMonth - 1) * MONTH_LEN + 1;
@@ -438,7 +449,7 @@ export default function DashboardHabitos6Meses() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-white/40">
-              Reto de 6 meses · Mes {selectedMonth} ({monthRangeLabel})
+              Reto de 90 días · Mes {selectedMonth} ({monthRangeLabel})
             </p>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
               Día{" "}
@@ -664,8 +675,8 @@ export default function DashboardHabitos6Meses() {
               ) : (
                 <div className="space-y-2">
                   <p className="text-xs text-[#FF4D4D]">
-                    Esto borra todas las marcas de hábitos cumplidos. No se puede
-                    deshacer. ¿Confirmas?
+                    Esto borra las marcas del reto actual (desde la fecha de inicio).
+                    El reto anterior no se toca. No se puede deshacer. ¿Confirmas?
                   </p>
                   <div className="flex gap-2">
                     <button

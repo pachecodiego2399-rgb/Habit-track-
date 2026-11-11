@@ -15,13 +15,38 @@ function dateFromDay(startDateISO, dayNumber) {
   return d.toISOString().slice(0, 10);
 }
 
-// GET /api/progress → { entries: [{ recordId, habitId, day }] }
-export async function GET() {
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+// Día del reto (1 = fecha de inicio) para una fecha ISO. Puede ser <= 0 si la
+// fecha es anterior al inicio (registros de un reto anterior).
+function dayFromDate(fechaISO, startDateISO) {
+  const ms = Date.parse(`${fechaISO}T00:00:00Z`) - Date.parse(`${startDateISO}T00:00:00Z`);
+  return Math.round(ms / 86400000) + 1;
+}
+
+// Día dentro del reto que arranca en startDate, según el campo Fecha del
+// registro. Devuelve null si el registro es de un reto anterior (o no tiene
+// fecha), así el historial queda en Airtable pero fuera del reto actual.
+function challengeDay(record, startDateISO) {
+  const fecha = record.fields[FIELDS.FECHA];
+  if (typeof fecha !== "string" || !ISO_DATE.test(fecha.slice(0, 10))) return null;
+  const day = dayFromDate(fecha.slice(0, 10), startDateISO);
+  return day >= 1 ? day : null;
+}
+
+// GET /api/progress?startDate=YYYY-MM-DD → { entries: [{ recordId, habitId, day }] }
+// Solo devuelve los registros del reto que arranca en startDate.
+export async function GET(request) {
   try {
+    const startDate = new URL(request.url).searchParams.get("startDate");
+    if (!startDate || !ISO_DATE.test(startDate)) {
+      return NextResponse.json({ error: "startDate inválido (YYYY-MM-DD)" }, { status: 400 });
+    }
     const records = await fetchAllProgressRecords();
     const entries = [];
     for (const record of records) {
-      const day = record.fields[FIELDS.DIA];
+      const day = challengeDay(record, startDate);
+      if (day === null) continue;
       const linkedIds = record.fields[FIELDS.HABITO] || [];
       for (const recordId of linkedIds) {
         const habitId = RECORD_ID_TO_HABIT_ID[recordId];
@@ -49,7 +74,7 @@ export async function POST(request) {
     }
 
     if (completed) {
-      const fecha = dateFromDay(body.startDate || "2026-08-07", day);
+      const fecha = dateFromDay(body.startDate || "2026-11-11", day);
       const data = await airtableFetch(`/${PROGRESO_TABLE_ID}`, {
         method: "POST",
         body: JSON.stringify({
@@ -79,11 +104,16 @@ export async function POST(request) {
   }
 }
 
-// DELETE /api/progress → borra TODOS los registros de progreso (reiniciar).
-export async function DELETE() {
+// DELETE /api/progress?startDate=YYYY-MM-DD → borra solo las marcas del reto
+// actual (fecha >= startDate). Los retos anteriores no se tocan.
+export async function DELETE(request) {
   try {
+    const startDate = new URL(request.url).searchParams.get("startDate");
+    if (!startDate || !ISO_DATE.test(startDate)) {
+      return NextResponse.json({ error: "startDate inválido (YYYY-MM-DD)" }, { status: 400 });
+    }
     const records = await fetchAllProgressRecords();
-    const ids = records.map((r) => r.id);
+    const ids = records.filter((r) => challengeDay(r, startDate) !== null).map((r) => r.id);
     // Airtable permite borrar hasta 10 registros por llamada.
     for (let i = 0; i < ids.length; i += 10) {
       const batch = ids.slice(i, i + 10);

@@ -1,8 +1,8 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Dashboard de Hábitos — Reto de 6 meses",
-  description: "Seguimiento de hábitos por 6 meses en 4 áreas de vida",
+  title: "Dashboard de Hábitos — Reto de 90 días",
+  description: "Seguimiento de hábitos por 90 días en áreas de vida",
 };
 
 export default function RootLayout({ children }) {
