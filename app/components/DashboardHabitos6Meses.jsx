@@ -736,10 +736,18 @@ function ProgressChart({ dailyStats, monthLen }) {
   const padBottom = 24;
   const chartHeight = height - padTop - padBottom;
 
-  const xFor = (indexInMonth) => (indexInMonth / Math.max(monthLen - 1, 1)) * width;
+  const padX = 14; // margen lateral para que el primer/último punto no quede recortado
+  const xFor = (indexInMonth) =>
+    padX + (indexInMonth / Math.max(monthLen - 1, 1)) * (width - padX * 2);
   const yFor = (pct) => padTop + chartHeight - (pct / 100) * chartHeight;
 
-  const points = dailyStats.map((s, i) => [xFor(i), yFor(s.pct)]);
+  const realPoints = dailyStats.map((s, i) => [xFor(i), yFor(s.pct)]);
+  // Con un solo día registrado no hay curva que dibujar: partimos desde 0% y
+  // subimos hasta el valor del día para que el progreso se vea como línea/área.
+  const points =
+    realPoints.length === 1
+      ? [[xFor(0), yFor(0)], [xFor(1), realPoints[0][1]]]
+      : realPoints;
 
   const smoothSegments = (pts) => {
     let d = "";
@@ -781,9 +789,10 @@ function ProgressChart({ dailyStats, monthLen }) {
           Este mes todavía no ha comenzado.
         </div>
       ) : (
+        <div className="relative w-full h-40 sm:h-48">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="w-full h-40 sm:h-48"
+          className="absolute inset-0 w-full h-full"
           preserveAspectRatio="none"
         >
           <defs>
@@ -823,15 +832,25 @@ function ProgressChart({ dailyStats, monthLen }) {
             />
           )}
 
-          <circle
-            cx={points[points.length - 1][0]}
-            cy={points[points.length - 1][1]}
-            r={4}
-            fill="#FF4D4D"
-            stroke="#08080b"
-            strokeWidth={1.5}
-          />
         </svg>
+        {/* Marcador del último día como elemento HTML para que no se deforme con el SVG estirado */}
+        <span
+          className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#08080b] bg-[#FF4D4D]"
+          style={{
+            left: `${(points[points.length - 1][0] / width) * 100}%`,
+            top: `${(points[points.length - 1][1] / height) * 100}%`,
+          }}
+        />
+        <span
+          className="absolute -translate-x-1/2 text-[10px] font-bold text-white/70"
+          style={{
+            left: `${(points[points.length - 1][0] / width) * 100}%`,
+            top: `calc(${(points[points.length - 1][1] / height) * 100}% - 22px)`,
+          }}
+        >
+          {dailyStats[dailyStats.length - 1].pct}%
+        </span>
+        </div>
       )}
       <div className="mt-1 flex justify-between text-[10px] text-white/30">
         <span>Inicio de mes</span>
